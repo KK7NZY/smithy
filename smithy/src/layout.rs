@@ -1,4 +1,5 @@
 use crate::types::Coord;
+use std::iter;
 
 /// Calculates the positions of points on a bolt circle pattern.
 ///
@@ -78,6 +79,64 @@ pub fn calc_linear_spacing(start: f64, end: f64, step: f64) -> impl Iterator<Ite
         .take_while(move |&v| v <= end)
 }
 
+/// Generates a grid of `Coord` values based on start values, step sizes, and number of positions along each axis.
+///
+/// This function returns an iterator that lazily generates `Coord` structures representing a grid.
+/// The `x` values are incremented by `x_step`, and the `y` values are incremented by `y_step`,
+/// with a specified number of positions along each axis (`x_count` and `y_count`).
+///
+/// # Parameters
+///
+/// - `x_start`: The starting value for the x-axis.
+/// - `x_cnt`: The number of positions along the x-axis.
+/// - `x_step`: The step size between consecutive x values.
+/// - `y_start`: The starting value for the y-axis.
+/// - `y_cnt`: The number of positions along the y-axis.
+/// - `y_step`: The step size between consecutive y values.
+///
+/// # Returns
+///
+/// Returns an iterator of `Coord` structs, each representing a point on the grid.
+///
+/// # Example
+///
+/// ```
+/// ```
+pub fn calc_grid(
+    x_start: f64,
+    x_cnt: u32,
+    x_step: f64,
+    y_start: f64,
+    y_cnt: u32,
+    y_step: f64,
+) -> impl Iterator<Item = Coord> {
+    let mut cur_x = 0;
+    let mut cur_y = 0;
+
+    iter::from_fn(move || {
+        if cur_x >= x_cnt {
+            return None;
+        }
+
+        cur_y += 1;
+
+        if cur_y >= y_cnt {
+            cur_y = 0;
+            cur_x += 1;
+        }
+
+        let x = x_start + cur_x as f64 * x_step;
+        let y = y_start + cur_y as f64 * y_step;
+
+        Some(Coord {
+            x,
+            y,
+            z: None,
+            angle: None,
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,5 +166,13 @@ mod tests {
             .collect::<Vec<_>>();
         let expected = vec![0.5, 3.25, 6.0, 8.75, 11.5];
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_calc_grid() {
+        let actual = calc_grid(0.0, 4, 2.0, 0.0, 4, 1.0)
+            .map(|c| (c.x, c.y))
+            .collect::<Vec<(f64, f64)>>();
+        println!("{:?}", actual);
     }
 }
