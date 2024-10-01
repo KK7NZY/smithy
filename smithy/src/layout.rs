@@ -79,11 +79,13 @@ pub fn calc_linear_spacing(start: f64, end: f64, step: f64) -> impl Iterator<Ite
         .take_while(move |&v| v <= end)
 }
 
-/// Generates a grid of `Coord` values based on start values, step sizes, and number of positions along each axis.
+/// Generates a grid of `Coord` values based on start values, step sizes, and number of positions along each axis,
+/// with alternating directions for each row.
 ///
 /// This function returns an iterator that lazily generates `Coord` structures representing a grid.
-/// The `x` values are incremented by `x_step`, and the `y` values are incremented by `y_step`,
-/// with a specified number of positions along each axis (`x_count` and `y_count`).
+/// The `x` values are incremented by `x_step` for even rows, and decremented by `x_step` for odd rows,
+/// creating a back-and-forth pattern. The `y` values are incremented by `y_step`,
+/// with a specified number of positions along each axis.
 ///
 /// # Parameters
 ///
@@ -96,13 +98,29 @@ pub fn calc_linear_spacing(start: f64, end: f64, step: f64) -> impl Iterator<Ite
 ///
 /// # Returns
 ///
-/// Returns an iterator of `Coord` structs, each representing a point on the grid.
+/// Returns an iterator of `Coord` structs, each representing a point on the alternating grid.
 ///
 /// # Example
 ///
+/// ```rust
+/// use smithy::layout::{calc_alt_grid};
+/// let grid: Vec<_> = calc_alt_grid(0.0, 4, 2.0, 0.0, 4, 1.0).collect();
+/// assert_eq!(grid.len(), 16);
+/// for coord in grid {
+///     println!("X: {}, Y: {}", coord.x, coord.y);
+/// }
+/// // Example output:
+/// // X: 0.0, Y: 0.0
+/// // X: 1.0, Y: 0.0
+/// // X: 2.0, Y: 0.0
+/// // X: 3.0, Y: 0.0
+/// // X: 3.0, Y: 1.0
+/// // X: 2.0, Y: 1.0
+/// // X: 1.0, Y: 1.0
+/// // X: 0.0, Y: 2.0
 /// ```
-/// ```
-pub fn calc_grid(
+
+pub fn calc_alt_grid(
     x_start: f64,
     x_cnt: u32,
     x_step: f64,
@@ -114,19 +132,24 @@ pub fn calc_grid(
     let mut cur_y = 0;
 
     iter::from_fn(move || {
-        if cur_x >= x_cnt {
+        if cur_y >= y_cnt {
             return None;
         }
 
-        cur_y += 1;
-
-        if cur_y >= y_cnt {
-            cur_y = 0;
-            cur_x += 1;
-        }
-
-        let x = x_start + cur_x as f64 * x_step;
+        let x = if cur_y % 2 == 0 {
+            x_start + cur_x as f64 * x_step
+        } else {
+            ((x_cnt - 1) - cur_x) as f64 * x_step
+        };
+        // let x = x_start + cur_x as f64 * x_step;
         let y = y_start + cur_y as f64 * y_step;
+
+        cur_x += 1;
+
+        if cur_x >= x_cnt {
+            cur_x = 0;
+            cur_y += 1;
+        }
 
         Some(Coord {
             x,
@@ -170,9 +193,13 @@ mod tests {
 
     #[test]
     fn test_calc_grid() {
-        let actual = calc_grid(0.0, 4, 2.0, 0.0, 4, 1.0)
+        let actual = calc_alt_grid(0.0, 6, 1.0, 0.0, 4, 1.0)
             .map(|c| (c.x, c.y))
             .collect::<Vec<(f64, f64)>>();
-        println!("{:?}", actual);
+        assert_eq!(actual.len(), 24);
+        assert_eq!(actual[0], (0.0, 0.0));
+        assert_eq!(actual[5], (5.0, 0.0)); // First row, last value
+        assert_eq!(actual[6], (5.0, 1.0)); // Second row, first value (reversed)
+        assert_eq!(actual[23], (0.0, 3.0));
     }
 }
