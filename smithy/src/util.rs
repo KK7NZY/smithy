@@ -11,5 +11,6 @@ mod tests {
     #[test]
     fn test_truncate_float() {
         assert_eq!(truncate_float(0.0011297934537308734, 4), 0.0011);
+        assert_eq!(truncate_float(0.001196095376922672, 5), 0.00120);
     }
 }

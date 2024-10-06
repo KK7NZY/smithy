@@ -45,29 +45,35 @@ pub fn calc_uts_thread_allowance(d: f64, p: f64, class: &ThreadClass, le: Option
             return 0.0
         },
     };
-    truncate_float(
-        n * (k1 * d.cbrt() + k1 * le.sqrt() + k2 * p.powi(2).cbrt()),
-        6,
-    )
+    n * (k1 * d.cbrt() + k1 * le.sqrt() + k2 * p.powi(2).cbrt())
 }
 
-pub fn calc_uts_thread(dia: f64, tpi: i32, class: &ThreadClass, le_p: u32) -> (f64, f64) {
+fn calc_uts_base_tolerance(d: f64, p: f64, le: f64) -> f64 {
+    let k1 = 0.0015;
+    let k2 = 0.015;
+    k1 * d.cbrt() + k1 * le.sqrt() + k2 * p.powi(2).cbrt()
+}
+
+pub fn calc_uts_thread(dia: f64, tpi: i32, class: &ThreadClass, le_p: Option<u32>) -> (f64, f64) {
     let p = 1.0 / tpi as f64;
-    let le = le_p as f64 * p;
+    let le = le_p.unwrap_or(9) as f64 * p;
     let es = calc_uts_thread_allowance(dia, p, class, Some(le));
+
+    println!("ES={}", es);
+
     let d_max = dia - es;
+    let t = calc_uts_base_tolerance(dia, p, le);
+
     let td = match class {
-        ThreadClass::A1 => 0.3 * p,
-        ThreadClass::A2 | ThreadClass::A3 => 0.06 * p.cbrt(),
+        ThreadClass::A1 => 0.3 * t,
+        ThreadClass::A2 | ThreadClass::A3 => 0.06 * p.powi(2).cbrt(),
     };
+
+    println!("TD={}", td);
+
     let d_min = d_max - td;
-    let td2 = match class {
-        ThreadClass::A1 => 1.5 * p,
-        ThreadClass::A2 => p,
-        ThreadClass::A3 => 0.75 * p
-    };
-    println!("{}", td2);
-    (d_max, d_min)
+
+    (d_min, d_max)
 }
 
 #[cfg(test)]
@@ -90,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_calc_uts_thread() {
-        let n = calc_uts_thread(0.25, 20, &ThreadClass::A2, 9);
+        let n = calc_uts_thread(0.250, 20, &ThreadClass::A2, Some(9));
         println!("{:?}", n);
     }
 }
