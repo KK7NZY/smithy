@@ -192,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calc_grid() {
+    fn test_calc_alt_grid() {
         let actual = calc_alt_grid(0.0, 6, 1.0, 0.0, 4, 1.0)
             .map(|c| (c.x, c.y))
             .collect::<Vec<(f64, f64)>>();
