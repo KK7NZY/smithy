@@ -1,4 +1,4 @@
 pub mod layout;
-mod math;
 mod types;
-mod threading;
+pub mod threading;
+mod util;

@@ -151,24 +151,31 @@ pub fn calc_alt_grid(
             cur_y += 1;
         }
 
-        Some(Coord {
+        let coord = Coord {
             x,
             y,
             z: None,
             angle: None,
-        })
+        };
+        Some(coord)
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::round;
+    use crate::util::truncate_float;
 
     #[test]
     fn test_calc_bolt_circle() {
         let actual = calc_bolt_circle(6.0, 5, Some(20.0), None, None)
-            .map(|p| (round(p.angle.unwrap(), 1), round(p.x, 4), round(p.y, 4)))
+            .map(|p| {
+                (
+                    truncate_float(p.angle.unwrap(), 1),
+                    truncate_float(p.x, 4),
+                    truncate_float(p.y, 4),
+                )
+            })
             .collect::<Vec<_>>();
         let expected = vec![
             (20.0, 2.8191, 1.0261),
@@ -185,7 +192,7 @@ mod tests {
         let start = 0.5;
         let end = 11.5;
         let actual = calc_linear_spacing(start, end, (end - start) / 4.0)
-            .map(|v| round(v, 3))
+            .map(|v| truncate_float(v, 3))
             .collect::<Vec<_>>();
         let expected = vec![0.5, 3.25, 6.0, 8.75, 11.5];
         assert_eq!(actual, expected);
