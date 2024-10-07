@@ -1,5 +1,12 @@
-use crate::types::Coord;
 use std::iter;
+
+#[derive(Debug)]
+pub struct Coord {
+    pub angle: Option<f64>,
+    pub x: f64,
+    pub y: f64,
+    pub z: Option<f64>,
+}
 
 /// Calculates the positions of points on a bolt circle pattern.
 ///

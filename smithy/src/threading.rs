@@ -10,8 +10,6 @@ pub enum ThreadClass {
     A3,
 }
 
-impl ThreadClass {}
-
 /// Calculates the thread allowance for Unified Thread Standard (UTS) external threads.
 ///
 /// The thread allowance is calculated using the formula:
@@ -35,7 +33,7 @@ impl ThreadClass {}
 /// # Example
 /// ```rust
 /// ```
-pub fn calc_uts_thread_allowance(d: f64, p: f64, class: &ThreadClass, le: Option<f64>) -> f64 {
+pub fn calc_uts_allowance(d: f64, p: f64, class: &ThreadClass, le: Option<f64>) -> f64 {
     let le = le.unwrap_or(5.0 * p);
     let k1 = 0.0015;
     let k2 = 0.015;
@@ -72,22 +70,53 @@ fn calc_uts_base_tolerance(d: f64, p: f64, le: f64) -> f64 {
     k1 * d.cbrt() + k1 * le.sqrt() + k2 * p.powi(2).cbrt()
 }
 
-pub fn calc_uts_thread(dia: f64, tpi: u32, class: &ThreadClass, le_p: Option<u32>) -> (f64, f64) {
+#[derive(Debug, Default)]
+pub struct UnifiedThreadCalc {
+    p: f64,
+    d_min: f64,
+    d_max: f64,
+    d2: f64,
+    d2_min: f64,
+    d2_max: f64,
+    h: f64,
+    es: f64,
+    t: f64,
+    td: f64,
+    td2: f64,
+    le: f64,
+}
+
+pub fn calc_uts_thread(
+    d: f64,
+    tpi: u32,
+    class: &ThreadClass,
+    le: Option<u32>,
+) -> UnifiedThreadCalc {
+    let mut calc = UnifiedThreadCalc::default();
+    let le = le.unwrap_or(9) as f64;
     let p = 1.0 / tpi as f64;
-    let le = le_p.unwrap_or(9) as f64 * p;
-    let es = calc_uts_thread_allowance(dia, p, class, Some(le));
-    let d_max = dia - es; // Max. Major Dia.
-    let t = calc_uts_base_tolerance(dia, p, le);
-    let td = match class {
-        ThreadClass::A1 => 0.3 * t,
+    calc.p = p;
+    calc.le = le * p;
+    calc.es = calc_uts_allowance(d, p, class, Some(calc.le));
+    calc.d_max = d - calc.es; // Max. Major Dia.
+    calc.t = calc_uts_base_tolerance(d, p, calc.le);
+    calc.td = match class {
+        // Tolerance for External Major Diameter
+        ThreadClass::A1 => 0.3 * calc.t,
         ThreadClass::A2 | ThreadClass::A3 => 0.06 * p.powi(2).cbrt(),
     };
-    let d_min = d_max - td; // Min. Major Dia.
-    // let td2 = match class {
-    //
-    // }
-
-    (d_min, d_max)
+    calc.d_min = calc.d_max - calc.td; // Min. Major Dia.
+    calc.h = 0.866025404 * p; // Height Triangle
+    calc.d2 = d - 2.0 * ((3.0 / 8.0) * calc.h); // External Pitch Dia.
+    calc.d2_max = calc.d2 - calc.es; // Max. Pitch Dia.
+    calc.td2 = match class {
+        // Tolerance for External Pitch Diameter
+        ThreadClass::A1 => 1.5 * calc.t,
+        ThreadClass::A2 => calc.t,
+        ThreadClass::A3 => 0.75 * calc.t,
+    };
+    calc.d2_min = calc.d2_max - calc.td2; // Min. Pitch Dia.
+    calc
 }
 
 #[cfg(test)]
@@ -98,19 +127,19 @@ mod tests {
     fn test_calc_uts_thread_allowance() {
         let pitch = 1.0 / 28.0;
         let es = truncate_float(
-            calc_uts_thread_allowance(0.5, pitch, &ThreadClass::A2, Some(0.4)),
+            calc_uts_allowance(0.5, pitch, &ThreadClass::A2, Some(0.4)),
             6,
         );
         assert_eq!(es, 0.00113);
 
         let pitch = 1.0 / 20.0;
         let es = truncate_float(
-            calc_uts_thread_allowance(0.25, pitch, &ThreadClass::A1, Some(0.0125)),
+            calc_uts_allowance(0.25, pitch, &ThreadClass::A1, Some(0.0125)),
             6,
         );
         assert_eq!(es, 0.000945);
 
-        let es = calc_uts_thread_allowance(0.25, pitch, &ThreadClass::A3, Some(0.0125));
+        let es = calc_uts_allowance(0.25, pitch, &ThreadClass::A3, Some(0.0125));
         assert_eq!(es, 0.0);
     }
 
