@@ -92,31 +92,41 @@ pub fn calc_uts_thread(
     class: &ThreadClass,
     le: Option<u32>,
 ) -> UnifiedThreadCalc {
-    let mut calc = UnifiedThreadCalc::default();
-    let le = le.unwrap_or(9) as f64;
     let p = 1.0 / tpi as f64;
-    calc.p = p;
-    calc.le = le * p;
-    calc.es = calc_uts_allowance(d, p, class, Some(calc.le));
-    calc.d_max = d - calc.es; // Max. Major Dia.
-    calc.t = calc_uts_base_tolerance(d, p, calc.le);
-    calc.td = match class {
+    let le = le.unwrap_or(9) as f64 * p;
+    let es = calc_uts_allowance(d, p, class, Some(le));
+    let d_max = d - es; // Max. Major Dia.
+    let t = calc_uts_base_tolerance(d, p, le);
+    let td = match class {
         // Tolerance for External Major Diameter
-        ThreadClass::A1 => 0.3 * calc.t,
+        ThreadClass::A1 => 0.3 * t,
         ThreadClass::A2 | ThreadClass::A3 => 0.06 * p.powi(2).cbrt(),
     };
-    calc.d_min = calc.d_max - calc.td; // Min. Major Dia.
-    calc.h = 0.866025404 * p; // Height Triangle
-    calc.d2 = d - 2.0 * ((3.0 / 8.0) * calc.h); // External Pitch Dia.
-    calc.d2_max = calc.d2 - calc.es; // Max. Pitch Dia.
-    calc.td2 = match class {
+    let d_min = d_max - td; // Min. Major Dia.
+    let h = 0.866025404 * p; // Height Triangle
+    let d2 = d - 2.0 * ((3.0 / 8.0) * h); // External Pitch Dia.
+    let d2_max = d2 - es; // Max. Pitch Dia.
+    let td2 = match class {
         // Tolerance for External Pitch Diameter
-        ThreadClass::A1 => 1.5 * calc.t,
-        ThreadClass::A2 => calc.t,
-        ThreadClass::A3 => 0.75 * calc.t,
+        ThreadClass::A1 => 1.5 * t,
+        ThreadClass::A2 => t,
+        ThreadClass::A3 => 0.75 * t,
     };
-    calc.d2_min = calc.d2_max - calc.td2; // Min. Pitch Dia.
-    calc
+    let d2_min = d2_max - td2; // Min. Pitch Dia.
+    UnifiedThreadCalc {
+        p,
+        le,
+        es,
+        d_min,
+        d_max,
+        t,
+        td,
+        td2,
+        d2,
+        d2_min,
+        d2_max,
+        h,
+    }
 }
 
 #[cfg(test)]
@@ -145,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_calc_uts_thread() {
-        let n = calc_uts_thread(0.250, 20, &ThreadClass::A2, Some(9));
+        let n = calc_uts_extern_thread(0.250, 20, &ThreadClass::A2, Some(9));
         println!("{:?}", n);
     }
 }
