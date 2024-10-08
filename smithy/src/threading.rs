@@ -70,20 +70,45 @@ fn calc_uts_base_tolerance(d: f64, p: f64, le: f64) -> f64 {
     k1 * d.cbrt() + k1 * le.sqrt() + k2 * p.powi(2).cbrt()
 }
 
+fn calc_uts_extern_tolerances(d: f64, p: f64, class: &ThreadClass, le: f64) -> (f64, f64, f64) {
+    let t = calc_uts_base_tolerance(d, p, le);
+    let td = match class {
+        // Tolerance for External Major Diameter
+        ThreadClass::A1 => 0.3 * t,
+        ThreadClass::A2 | ThreadClass::A3 => 0.06 * p.powi(2).cbrt(),
+    };
+    let td2 = match class {
+        // Tolerance for External Pitch Diameter
+        ThreadClass::A1 => 1.5 * t,
+        ThreadClass::A2 => t,
+        ThreadClass::A3 => 0.75 * t,
+    };
+    (t, td, td2)
+}
+
 #[derive(Debug, Default)]
+/// A structure for storing calculated properties of unified thread specifications.
+///
+/// This structure contains key thread measurements such as diameters, tolerances,
+/// pitch, height, and length of engagement. It is used to encapsulate the results
+/// of unified thread calculations.
 pub struct UnifiedThreadCalc {
-    p: f64,
-    d_min: f64,
-    d_max: f64,
-    d2: f64,
-    d2_min: f64,
-    d2_max: f64,
-    h: f64,
-    es: f64,
-    t: f64,
-    td: f64,
-    td2: f64,
-    le: f64,
+    p: f64,         // Pitch
+    d_min: f64,     // Min. Major Dia.
+    d_max: f64,     // Max. Major Dia.
+    d1: f64,        // Minor Dia.
+    d2: f64,        // External Pitch Dia.
+    d2_min: f64,    // Min. Pitch Dia.
+    d2_max: f64,    // Max. Pitch Dia.
+    h: f64,         // Height Triangle
+    es: f64,        // Allowance
+    t: f64,         // Base Tolerance
+    td: f64,        // Major Dia. Tolerance
+    td2: f64,       // Pitch Tolerance
+    le: f64,        // Length of Engagement
+    d_unr_max: f64, // Max. External UNR Dia.
+    d_un_max: f64,  // Max. External UN Dia.
+    h_as: f64,      // External Thread Addendum
 }
 
 pub fn calc_uts_thread(
@@ -95,24 +120,20 @@ pub fn calc_uts_thread(
     let p = 1.0 / tpi as f64;
     let le = le.unwrap_or(9) as f64 * p;
     let es = calc_uts_allowance(d, p, class, Some(le));
-    let d_max = d - es; // Max. Major Dia.
-    let t = calc_uts_base_tolerance(d, p, le);
-    let td = match class {
-        // Tolerance for External Major Diameter
-        ThreadClass::A1 => 0.3 * t,
-        ThreadClass::A2 | ThreadClass::A3 => 0.06 * p.powi(2).cbrt(),
+    let d_max = d - es;
+    let (t, td, td2) = calc_uts_extern_tolerances(d, p, class, le);
+    let d_min = d_max - td;
+    let h = 0.866025404 * p;
+    let d2 = d - 2.0 * ((3.0 / 8.0) * h);
+    let d2_max = d2 - es;
+    let d2_min = d2_max - td2;
+    let d_bsc_min = d - 2.0 * ((5.0 / 8.0) * h);
+    let d1 = match class {
+        // UN Series
+        ThreadClass::A1 | ThreadClass::A2 => d_bsc_min - es,
+        ThreadClass::A3 => d_bsc_min,
+        // UNR ^-H/8
     };
-    let d_min = d_max - td; // Min. Major Dia.
-    let h = 0.866025404 * p; // Height Triangle
-    let d2 = d - 2.0 * ((3.0 / 8.0) * h); // External Pitch Dia.
-    let d2_max = d2 - es; // Max. Pitch Dia.
-    let td2 = match class {
-        // Tolerance for External Pitch Diameter
-        ThreadClass::A1 => 1.5 * t,
-        ThreadClass::A2 => t,
-        ThreadClass::A3 => 0.75 * t,
-    };
-    let d2_min = d2_max - td2; // Min. Pitch Dia.
     UnifiedThreadCalc {
         p,
         le,
@@ -126,6 +147,10 @@ pub fn calc_uts_thread(
         d2_min,
         d2_max,
         h,
+        d1,
+        d_unr_max: 1.19078493 * p,
+        d_un_max: 1.08253175 * p,
+        h_as: 0.64951905 * p, // ((d - 5.0 / 8.0) * 3f64.sqrt() * p).abs()
     }
 }
 
@@ -155,7 +180,10 @@ mod tests {
 
     #[test]
     fn test_calc_uts_thread() {
-        let n = calc_uts_extern_thread(0.250, 20, &ThreadClass::A2, Some(9));
+        let n = calc_uts_thread(0.5, 28, &ThreadClass::A2, Some(9));
+        println!("{:?}", n);
+
+        let n = calc_uts_thread(0.25, 20, &ThreadClass::A2, Some(9));
         println!("{:?}", n);
     }
 }
