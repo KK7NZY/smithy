@@ -111,7 +111,7 @@ pub struct UnifiedThreadCalc {
     h_as: f64,      // External Thread Addendum
 }
 
-pub fn calc_uts_thread(
+pub fn calc_uts_extern_thread(
     d: f64,
     tpi: u32,
     class: &ThreadClass,
@@ -179,11 +179,11 @@ mod tests {
     }
 
     #[test]
-    fn test_calc_uts_thread() {
-        let n = calc_uts_thread(0.5, 28, &ThreadClass::A2, Some(9));
+    fn test_calc_uts_extern_thread() {
+        let n = calc_uts_extern_thread(0.5, 28, &ThreadClass::A2, Some(9));
         println!("{:?}", n);
 
-        let n = calc_uts_thread(0.25, 20, &ThreadClass::A2, Some(9));
+        let n = calc_uts_extern_thread(0.25, 20, &ThreadClass::A2, Some(9));
         println!("{:?}", n);
     }
 }
